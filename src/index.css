@@ -1,0 +1,295 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   Kagami — design system
+   Dark-first, cinematic. Deep black canvas, zinc surfaces, indigo/violet brand,
+   one accent hue per watch-status. Every colour here is a semantic token:
+   components never hardcode hex values.
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* Surfaces — lifted off pure black so cards read as objects, not holes.
+     Each step is a clear jump: canvas → surface → surface-2 → surface-3. */
+  --color-canvas: #0a0a10;
+  --color-canvas-soft: #0e0e15;
+  --color-surface: #16161f;
+  --color-surface-2: #1e1e2a;
+  --color-surface-3: #2a2a38;
+  --color-overlay: #13131c;
+
+  /* Lines — visible on their own, never relying on a shadow to be seen */
+  --color-line: #2c2c3a;
+  --color-line-soft: #21212c;
+  --color-line-strong: #3f3f52;
+
+  /* Text — every level clears WCAG AA against the surface it sits on.
+     ink-dim ≈ 8.9:1 on surface, ink-faint ≈ 5.9:1 on canvas. */
+  --color-ink: #f7f7fa;
+  --color-ink-dim: #b8b8c6;
+  --color-ink-faint: #8b8b9c;
+
+  /* Brand */
+  --color-brand: #6366f1;
+  --color-brand-bright: #818cf8;
+  --color-brand-deep: #4338ca;
+  --color-violet: #a855f7;
+
+  /* Feedback */
+  --color-danger: #f43f5e;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+
+  /* Watch statuses */
+  --color-st-watching: #818cf8;
+  --color-st-completed: #34d399;
+  --color-st-planned: #38bdf8;
+  --color-st-paused: #fbbf24;
+  --color-st-dropped: #fb7185;
+
+  /* Type — Sora carries the headings, Inter the interface, Noto Sans JP the
+     Japanese accents (kickers, native titles) that give the product its genre. */
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Sora', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-jp: 'Noto Sans JP', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Radii — generous but not pill-shaped, keeps the cinematic feel */
+  --radius-card: 0.875rem;
+  --radius-panel: 1.25rem;
+
+  /* Motion — a single rhythm shared by every animated surface */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-soft: cubic-bezier(0.55, 0, 1, 0.45);
+
+  /* Elevation */
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow-lift: 0 8px 40px -12px rgb(0 0 0 / 0.85), 0 0 0 1px rgb(255 255 255 / 0.06);
+  --shadow-pop: 0 24px 70px -20px rgb(0 0 0 / 0.9), 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    background-color: var(--color-canvas);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
+  }
+
+  /* Ambient light — two soft indigo/violet pools bleeding in from the top.
+     Fixed and behind everything, so it costs nothing while scrolling. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        70rem 40rem at 15% -10%,
+        color-mix(in oklab, var(--color-brand) 20%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        55rem 32rem at 92% -6%,
+        color-mix(in oklab, var(--color-violet) 15%, transparent),
+        transparent 62%
+      );
+  }
+
+  /* A whisper of grain, so the large dark areas read as film rather than flat
+     #000. Kept at 3.5% — visible as texture, never as noise. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+  }
+
+  h1 {
+    font-weight: 700;
+  }
+
+  /* Focus is always visible — never removed, only restyled. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-bright);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-brand) 45%, transparent);
+    color: #fff;
+  }
+
+  /* Tabular figures wherever numbers stack up (episode counts, stats) */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Japanese kicker sitting above a section title — the main genre signal.
+     Purely decorative, so it is always `aria-hidden` in the markup. */
+  .kicker-jp {
+    font-family: var(--font-jp);
+    font-weight: 500;
+    letter-spacing: 0.28em;
+    color: color-mix(in oklab, var(--color-brand-bright) 70%, transparent);
+  }
+
+  /* Angled accent bar — the small graphic tic that ties headings together. */
+  .accent-bar {
+    width: 3px;
+    border-radius: 999px;
+    background: linear-gradient(to bottom, var(--color-brand-bright), var(--color-violet));
+  }
+
+  /* Per-anime ambient glow. Components set `--glow` from the cover colour that
+     AniList already gives us, so every poster lights its own card. */
+  .glow-tint {
+    position: relative;
+  }
+  .glow-tint::after {
+    content: '';
+    position: absolute;
+    inset: -14% -10% -22%;
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0;
+    filter: blur(26px);
+    background: radial-gradient(60% 55% at 50% 55%, var(--glow, transparent), transparent 70%);
+    transition: opacity 320ms var(--ease-out-soft);
+  }
+  .glow-tint:hover::after,
+  .glow-tint:focus-within::after {
+    opacity: 0.55;
+  }
+
+  /* Big ghosted rank digit on Discover rails, streaming-chart style. */
+  .rank-digit {
+    font-family: var(--font-display);
+    font-weight: 800;
+    line-height: 0.8;
+    color: transparent;
+    -webkit-text-stroke: 1.5px color-mix(in oklab, var(--color-ink) 28%, transparent);
+  }
+
+  /* Thin, unobtrusive scrollbars that match the canvas */
+  .scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-3) transparent;
+  }
+  .scroll-slim::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .scroll-slim::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: 999px;
+  }
+  .scroll-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Glass panel — used sparingly: palette, top bar, sticky headers */
+  .glass {
+    background: color-mix(in oklab, var(--color-overlay) 78%, transparent);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+  }
+
+  /* Cinematic fade used at the bottom of hero/poster imagery */
+  .fade-bottom {
+    -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+  }
+}
+
+@layer utilities {
+  .animate-in-up {
+    animation: in-up 320ms var(--ease-out-soft) both;
+  }
+  .animate-fade {
+    animation: fade 220ms var(--ease-out-soft) both;
+  }
+  .shimmer {
+    background: linear-gradient(
+      100deg,
+      var(--color-surface) 20%,
+      var(--color-surface-2) 40%,
+      var(--color-surface) 60%
+    );
+    background-size: 240% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+}
+
+@keyframes in-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 160% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+
+/* Motion is decoration, never information — kill it when asked to. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
