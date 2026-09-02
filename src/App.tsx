@@ -27,7 +27,9 @@ function RouteFallback() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    // Vite injects the deployment base here, so the same build works at the
+    // domain root and under a sub-path like /kagami/.
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <LibraryProvider>
         <ToastProvider>
           <a

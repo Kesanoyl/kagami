@@ -491,16 +491,20 @@ await evaluate(`
 // They were silently written as an empty string before the autosave rewrite.
 await goto('/anime/21');
 await waitForText(['Mon suivi']);
-await evaluate(`
+const typedNotes = await evaluate(`
   (() => {
     const area = document.querySelector('textarea');
-    if (!area) throw new Error('textarea absente');
+    if (!area) return false;
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
     setter.call(area, 'reprendre apres l arc filler');
     area.dispatchEvent(new Event('input', { bubbles: true }));
     return true;
   })()
 `);
+if (!typedNotes) {
+  failed = true;
+  results.push('FAIL zone de notes introuvable sur /anime/21');
+}
 await sleep(1200);
 await goto('/library');
 await sleep(600);
