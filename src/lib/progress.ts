@@ -2,30 +2,46 @@ import type { Anime, ProgressEvent, UserAnime, WatchStatus } from '@/types';
 
 const HISTORY_CAP = 500;
 
-export function createEntry(anime: Anime, status: WatchStatus = 'planned'): UserAnime {
+/** What the "add to list" dialog can set up front. */
+export interface NewEntryValues {
+  currentEpisode?: number;
+  rating?: number | null;
+  notes?: string;
+}
+
+export function createEntry(
+  anime: Anime,
+  status: WatchStatus = 'planned',
+  values: NewEntryValues = {},
+): UserAnime {
   const now = new Date().toISOString();
   // Adding something straight as "completed" (a series watched before using the
   // app) should arrive with a full counter, not at episode 0.
   const alreadyDone = status === 'completed';
   const total = anime.episodes ?? 0;
 
+  const episode = alreadyDone
+    ? total
+    : Math.max(0, total ? Math.min(values.currentEpisode ?? 0, total) : (values.currentEpisode ?? 0));
+
   return {
     animeId: anime.id,
     status,
-    currentEpisode: alreadyDone ? total : 0,
+    currentEpisode: episode,
     currentSeason: null,
     currentPart: null,
     currentArc: null,
-    rating: null,
-    notes: '',
-    notesUpdatedAt: null,
+    rating: values.rating ?? null,
+    notes: values.notes?.trim() ? values.notes.trim() : '',
+    notesUpdatedAt: values.notes?.trim() ? now : null,
     favorite: false,
     rewatches: 0,
     addedAt: now,
     updatedAt: now,
-    startedAt: status === 'watching' || alreadyDone ? now : null,
+    startedAt: status === 'watching' || alreadyDone || episode > 0 ? now : null,
     completedAt: alreadyDone ? now : null,
-    history: alreadyDone && total > 0 ? [{ at: now, episode: total }] : [],
+    // Seed the log so an entry added mid-series still feeds the stats charts.
+    history: episode > 0 ? [{ at: now, episode }] : [],
   };
 }
 

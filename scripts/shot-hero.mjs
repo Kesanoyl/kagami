@@ -1,4 +1,9 @@
-/** Seeds a long-title series and screenshots the detail hero for visual review. */
+/**
+ * Seeds a series and screenshots a page for visual review.
+ *
+ *   node scripts/shot-hero.mjs                  → le bandeau de la fiche
+ *   node scripts/shot-hero.mjs "?add=1" ajout   → le dialogue d'ajout
+ */
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -67,19 +72,24 @@ const entry = {
   startedAt: null, completedAt: null, history: [],
 };
 
+const suffix = process.argv[2] ?? '';
+const label = process.argv[3] ?? 'hero';
+// With the add dialog we want an empty library, so the button is offered.
+const entries = suffix.includes('add=1') ? [] : [entry];
+
 await send('Page.navigate', { url: `${BASE}/` });
 await sleep(2500);
 await evaluate(`
-  localStorage.setItem('kagami:v1:entries', ${JSON.stringify(JSON.stringify([entry]))});
+  localStorage.setItem('kagami:v1:entries', ${JSON.stringify(JSON.stringify(entries))});
   localStorage.setItem('kagami:v1:animes', ${JSON.stringify(JSON.stringify([anime]))});
   true;
 `);
-await send('Page.navigate', { url: `${BASE}/anime/999001` });
+await send('Page.navigate', { url: `${BASE}/anime/999001${suffix}` });
 await sleep(4000);
 
 const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
-writeFileSync(new URL('../hero-check.png', import.meta.url), Buffer.from(shot.data, 'base64'));
-console.log('capture écrite : hero-check.png');
+writeFileSync(new URL(`../${label}-check.png`, import.meta.url), Buffer.from(shot.data, 'base64'));
+console.log(`capture écrite : ${label}-check.png`);
 
 socket.close();
 chrome.kill();

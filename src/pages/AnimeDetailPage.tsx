@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Check,
@@ -22,6 +22,7 @@ import { ScrollRow } from '@/components/ui/ScrollRow';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { AnimeRail } from '@/components/anime/AnimeGrid';
 import { TrackingPanel } from '@/components/anime/TrackingPanel';
+import { AddToListModal } from '@/components/anime/AddToListModal';
 import { MyRating } from '@/components/anime/Rating';
 import {
   AIRING_LABEL,
@@ -44,7 +45,19 @@ export default function AnimeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const animeId = Number(id);
   const navigate = useNavigate();
-  const { getEntry, getAnime, settings, add, advance, setStatus } = useWatchlist();
+  const { getEntry, getAnime, settings, advance, setStatus } = useWatchlist();
+  // `?add=1` lets the command palette hand off with the dialog already open.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [adding, setAdding] = useState(searchParams.get('add') === '1');
+
+  const closeAdd = () => {
+    setAdding(false);
+    if (searchParams.has('add')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('add');
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   const { data, loading, error, reload } = useAsync(
     (signal) => getAnimeDetail(animeId, signal),
@@ -223,22 +236,13 @@ export default function AnimeDetailPage() {
                     )}
                   </>
                 ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => add(anime, 'watching')}
-                      className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-soft transition-[background-color,transform] duration-200 hover:bg-brand-bright active:scale-[0.98]"
-                    >
-                      <Play size={15} fill="currentColor" strokeWidth={0} /> Commencer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => add(anime, 'planned')}
-                      className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface-2 px-4 text-sm font-medium text-ink transition-colors duration-200 hover:bg-surface-3"
-                    >
-                      <ListPlus size={15} /> Ajouter à ma liste
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => setAdding(true)}
+                    className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-soft transition-[background-color,transform] duration-200 hover:bg-brand-bright active:scale-[0.98]"
+                  >
+                    <ListPlus size={15} /> Ajouter à ma liste
+                  </button>
                 )}
               </div>
             </div>
@@ -277,7 +281,7 @@ export default function AnimeDetailPage() {
               </p>
               <button
                 type="button"
-                onClick={() => add(anime, 'planned')}
+                onClick={() => setAdding(true)}
                 className="mt-4 inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-brand px-4 text-sm font-medium text-white transition-colors duration-200 hover:bg-brand-bright"
               >
                 <Plus size={15} /> Ajouter à ma liste
@@ -389,6 +393,10 @@ export default function AnimeDetailPage() {
           </div>
         </aside>
       </div>
+
+      {!entry && (
+        <AddToListModal anime={anime} open={adding} onClose={closeAdd} />
+      )}
     </div>
   );
 }

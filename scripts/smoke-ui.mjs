@@ -650,6 +650,69 @@ if (ratingReachable === 'atteignable') {
   results.push(`FAIL bouton de notation : ${ratingReachable}`);
 }
 
+// The add dialog must capture status, score and remark in one pass.
+// Anime 113415 was removed from the library by the reset/restore cycle? No —
+// it is restored, so use a series that is NOT in the seed.
+await goto('/anime/1');
+await sleep(2500);
+const addOpened = await clickByText('Ajouter à ma liste');
+await sleep(600);
+
+if (addOpened) {
+  const filled = await evaluate(`
+    (() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      if (!dialog) return { ok: false, why: 'dialogue absent' };
+
+      const done = [...dialog.querySelectorAll('button')]
+        .find((b) => b.textContent.includes('Oui, terminé'));
+      if (!done) return { ok: false, why: 'bouton terminé absent' };
+      done.click();
+
+      const star = [...dialog.querySelectorAll('button')]
+        .find((b) => (b.getAttribute('aria-label') ?? '') === 'Noter 7.5 sur 10');
+      if (!star) return { ok: false, why: 'etoile 7.5 absente' };
+      star.click();
+
+      const area = dialog.querySelector('textarea');
+      if (!area) return { ok: false, why: 'zone de remarque absente' };
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(area, 'vu au cinema');
+      area.dispatchEvent(new Event('input', { bubbles: true }));
+      return { ok: true };
+    })()
+  `);
+
+  if (!filled.ok) {
+    failed = true;
+    results.push(`FAIL dialogue d ajout : ${filled.why}`);
+  } else {
+    await sleep(300);
+    await clickByText('Ajouter', DIALOG);
+    await sleep(900);
+
+    const stored = await evaluate(`
+      (() => {
+        const e = JSON.parse(localStorage.getItem('kagami:v1:entries') ?? '[]')
+          .find((x) => x.animeId === 1);
+        return e ? { status: e.status, rating: e.rating, notes: e.notes, ep: e.currentEpisode } : null;
+      })()
+    `);
+
+    if (
+      stored &&
+      stored.status === 'completed' &&
+      stored.rating === 7.5 &&
+      stored.notes === 'vu au cinema'
+    ) {
+      results.push('OK   ajout : statut, note et remarque enregistres en une fois');
+    } else {
+      failed = true;
+      results.push(`FAIL ajout detaille : ${JSON.stringify(stored)}`);
+    }
+  }
+}
+
 // The command palette must open on Ctrl+K.
 await goto('/');
 await sleep(500);

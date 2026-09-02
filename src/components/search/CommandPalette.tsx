@@ -74,6 +74,16 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     onClose();
   };
 
+  /**
+   * Adding needs the status/score/remark dialog, and stacking it on top of the
+   * palette would fight for the same layer — so we hand off to the detail page
+   * with the dialog already open.
+   */
+  const startAdd = (anime: Anime) => {
+    navigate(`/anime/${anime.id}?add=1`);
+    onClose();
+  };
+
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -92,9 +102,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       event.preventDefault();
       const row = rows[active];
       if (!row) return;
-      // ⌘/Ctrl + Enter adds without leaving the palette.
-      if ((event.metaKey || event.ctrlKey) && !row.entry) add(row.anime, 'planned');
-      else openDetail(row.anime);
+      // ⌘/Ctrl + Enter is the express path: straight into the list, no dialog.
+      if ((event.metaKey || event.ctrlKey) && !row.entry) {
+        add(row.anime, 'planned');
+        onClose();
+      } else {
+        openDetail(row.anime);
+      }
     }
   };
 
@@ -190,8 +204,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                           titleLanguage={settings.titleLanguage}
                           onHover={() => setActive(index)}
                           onOpen={() => openDetail(row.anime)}
-                          onAdd={() => add(row.anime, 'planned')}
-                          onMarkWatched={() => add(row.anime, 'completed')}
+                          onAdd={() => startAdd(row.anime)}
                           inLibrary={isInLibrary(row.anime.id)}
                         />
                       </li>
@@ -217,7 +230,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 <Key>
                   <CornerDownLeft size={9} />
                 </Key>
-                ajouter
+                ajout rapide
               </span>
             </div>
           </motion.div>
@@ -244,7 +257,6 @@ function ResultRow({
   onHover,
   onOpen,
   onAdd,
-  onMarkWatched,
 }: {
   row: Row;
   active: boolean;
@@ -253,7 +265,6 @@ function ResultRow({
   onHover: () => void;
   onOpen: () => void;
   onAdd: () => void;
-  onMarkWatched: () => void;
 }) {
   const { anime, entry } = row;
   const score = communityScore(anime.averageScore);
@@ -303,25 +314,13 @@ function ResultRow({
           <Check size={12} /> <span className="hidden sm:inline">Déjà dans ma liste</span>
         </span>
       ) : (
-        <span className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={onAdd}
-            className="flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-line bg-surface-2 px-2.5 text-[11px] font-medium text-ink transition-colors duration-200 hover:border-brand/40 hover:bg-brand/15"
-          >
-            <Plus size={12} /> <span className="hidden sm:inline">Ajouter</span>
-          </button>
-          {/* For series already finished before using the app. */}
-          <button
-            type="button"
-            onClick={onMarkWatched}
-            aria-label="Marquer comme déjà regardé"
-            title="Marquer comme déjà regardé"
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-line bg-surface-2 text-ink-dim transition-colors duration-200 hover:border-st-completed/40 hover:text-st-completed"
-          >
-            <Check size={13} />
-          </button>
-        </span>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-line bg-surface-2 px-2.5 text-[11px] font-medium text-ink transition-colors duration-200 hover:border-brand/40 hover:bg-brand/15"
+        >
+          <Plus size={12} /> <span className="hidden sm:inline">Ajouter</span>
+        </button>
       )}
     </div>
   );

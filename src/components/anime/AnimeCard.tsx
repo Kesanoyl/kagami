@@ -1,12 +1,13 @@
 import { memo, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Ellipsis, ListPlus, Play, Plus, Star } from 'lucide-react';
+import { Check, Ellipsis, ListPlus, Plus, Star } from 'lucide-react';
 import type { Anime, UserAnime } from '@/types';
 import { cn } from '@/lib/cn';
 import { Poster } from '@/components/ui/Poster';
 import { StatusBadge, STATUS_DOT } from '@/components/ui/Badge';
 import { MyRating } from './Rating';
 import { EditEntryModal } from './EditEntryModal';
+import { AddToListModal } from './AddToListModal';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { altTitle, communityScore, displayTitle, progressPercent } from '@/lib/format';
 import { FORMAT_LABEL } from '@/lib/constants';
@@ -31,8 +32,9 @@ export const AnimeCard = memo(function AnimeCard({
   rank?: number;
   className?: string;
 }) {
-  const { settings, add, advance, setStatus } = useWatchlist();
+  const { settings, advance, setStatus } = useWatchlist();
   const [editing, setEditing] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const title = displayTitle(anime, settings.titleLanguage);
   const alt = altTitle(anime, settings.titleLanguage);
@@ -134,34 +136,21 @@ export const AnimeCard = memo(function AnimeCard({
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    swallow(event);
-                    add(anime, 'watching');
-                  }}
-                  className="flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-brand text-xs font-semibold text-white transition-[background-color,transform] duration-200 hover:bg-brand-bright active:scale-95"
-                >
-                  <Play size={13} fill="currentColor" strokeWidth={0} /> Commencer
-                </button>
-                <button
-                  type="button"
-                  aria-label="Ajouter à ma liste"
-                  title="Ajouter à ma liste"
-                  onClick={(event) => {
-                    swallow(event);
-                    add(anime, 'planned');
-                  }}
-                  className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-black/60 text-ink backdrop-blur-sm transition-[background-color,transform] duration-200 hover:bg-black/80 active:scale-95"
-                >
-                  <ListPlus size={15} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={(event) => {
+                  swallow(event);
+                  setAdding(true);
+                }}
+                className="flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-brand text-xs font-semibold text-white transition-[background-color,transform] duration-200 hover:bg-brand-bright active:scale-95"
+              >
+                <ListPlus size={14} /> Ajouter
+              </button>
             )}
           </div>
 
-          {/* Touch devices get one always-visible primary action instead of hover. */}
+          {/* Touch devices get one always-visible primary action instead of hover:
+              advance the episode, or open the add dialog for a new series. */}
           {entry && canAdvance && (
             <button
               type="button"
@@ -173,6 +162,20 @@ export const AnimeCard = memo(function AnimeCard({
               className="absolute right-2 bottom-2 flex h-9 w-9 items-center justify-center rounded-full bg-brand/95 text-white shadow-lift transition-transform duration-200 active:scale-90 lg:hidden"
             >
               <Plus size={16} />
+            </button>
+          )}
+
+          {!entry && (
+            <button
+              type="button"
+              aria-label={`Ajouter ${title} à ma liste`}
+              onClick={(event) => {
+                swallow(event);
+                setAdding(true);
+              }}
+              className="absolute right-2 bottom-2 flex h-9 w-9 items-center justify-center rounded-full bg-brand/95 text-white shadow-lift transition-transform duration-200 active:scale-90 lg:hidden"
+            >
+              <ListPlus size={15} />
             </button>
           )}
 
@@ -244,13 +247,15 @@ export const AnimeCard = memo(function AnimeCard({
         </div>
       </div>
 
-      {entry && (
+      {entry ? (
         <EditEntryModal
           anime={anime}
           entry={entry}
           open={editing}
           onClose={() => setEditing(false)}
         />
+      ) : (
+        <AddToListModal anime={anime} open={adding} onClose={() => setAdding(false)} />
       )}
     </article>
   );

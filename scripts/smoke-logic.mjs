@@ -60,6 +60,49 @@ check('ajouter directement en « terminé » remplit le compteur', () => {
   assert.equal(entry.history.length, 1);
 });
 
+check('ajout avec note, remarque et épisode en une fois', () => {
+  const entry = createEntry(anime, 'watching', {
+    currentEpisode: 5,
+    rating: 8.5,
+    notes: '  conseillé par un ami  ',
+  });
+  assert.equal(entry.status, 'watching');
+  assert.equal(entry.currentEpisode, 5);
+  assert.equal(entry.rating, 8.5);
+  assert.equal(entry.notes, 'conseillé par un ami', 'la remarque est nettoyée');
+  assert.ok(entry.notesUpdatedAt, 'une remarque saisie est horodatée');
+  assert.equal(entry.history.length, 1, 'la progression initiale alimente les stats');
+  assert.equal(entry.history[0].episode, 5);
+});
+
+check('ajout en « terminé » avec une note : le compteur est rempli', () => {
+  const entry = createEntry(anime, 'completed', { rating: 10, currentEpisode: 3 });
+  // Le statut prime : « terminé » veut dire tous les épisodes.
+  assert.equal(entry.currentEpisode, 12);
+  assert.equal(entry.rating, 10);
+  assert.ok(entry.completedAt);
+});
+
+check('ajout sans rien saisir reste neutre', () => {
+  const entry = createEntry(anime, 'planned', {});
+  assert.equal(entry.currentEpisode, 0);
+  assert.equal(entry.rating, null);
+  assert.equal(entry.notes, '');
+  assert.equal(entry.notesUpdatedAt, null);
+  assert.deepEqual(entry.history, []);
+});
+
+check('une remarque vide ne crée pas de date de modification', () => {
+  const entry = createEntry(anime, 'watching', { notes: '   ' });
+  assert.equal(entry.notes, '');
+  assert.equal(entry.notesUpdatedAt, null);
+});
+
+check('l’épisode saisi est borné au total', () => {
+  assert.equal(createEntry(anime, 'watching', { currentEpisode: 999 }).currentEpisode, 12);
+  assert.equal(createEntry(anime, 'watching', { currentEpisode: -4 }).currentEpisode, 0);
+});
+
 check('+1 depuis « à regarder » bascule en « en cours »', () => {
   const { entry, justCompleted } = applyEpisode(createEntry(anime, 'planned'), anime, 1, true);
   assert.equal(entry.status, 'watching');

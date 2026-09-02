@@ -4,6 +4,7 @@ import { useToast } from '@/store/ToastContext';
 import type { Anime, LibraryEntry, UserAnime, WatchStatus } from '@/types';
 import { STATUS_META } from '@/lib/constants';
 import { displayTitle } from '@/lib/format';
+import type { NewEntryValues } from '@/lib/progress';
 
 /**
  * The API every screen uses to read and mutate the watchlist.
@@ -46,12 +47,22 @@ export function useWatchlist() {
   );
 
   const add = useCallback(
-    (anime: Anime, status: WatchStatus = 'planned') => {
+    (anime: Anime, status: WatchStatus = 'planned', values: NewEntryValues = {}) => {
       if (isInLibrary(anime.id)) return;
-      library.addToLibrary(anime, status);
+      library.addToLibrary(anime, status, values);
+
+      const extras = [
+        values.rating != null ? `noté ${values.rating.toFixed(1)}` : null,
+        values.notes?.trim() ? 'remarque enregistrée' : null,
+      ].filter(Boolean);
+
       toast({
         title: 'Ajouté à ta liste',
-        description: `${displayTitle(anime, settings.titleLanguage)} · ${STATUS_META[status].label}`,
+        description: [
+          displayTitle(anime, settings.titleLanguage),
+          STATUS_META[status].label,
+          ...extras,
+        ].join(' · '),
         variant: 'success',
       });
     },

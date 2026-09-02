@@ -11,7 +11,7 @@ import {
 import type { Anime, AppNotification, LibraryEntry, Settings, UserAnime, WatchStatus } from '@/types';
 import { DEFAULT_SETTINGS, storage } from '@/services/storage';
 import { getAnimesByIds } from '@/services/api/anime';
-import { applyEpisode, applyStatus, createEntry } from '@/lib/progress';
+import { applyEpisode, applyStatus, createEntry, type NewEntryValues } from '@/lib/progress';
 import { buildNotifications } from '@/services/notifications';
 import { captureDailySnapshot, captureSnapshot } from '@/services/storage/snapshots';
 import { requestPersistentStorage } from '@/services/storage/durability';
@@ -39,7 +39,7 @@ interface LibraryContextValue {
   getEntry: (animeId: number) => UserAnime | undefined;
   getAnime: (animeId: number) => Anime | undefined;
 
-  addToLibrary: (anime: Anime, status?: WatchStatus) => void;
+  addToLibrary: (anime: Anime, status?: WatchStatus, values?: NewEntryValues) => void;
   removeFromLibrary: (animeId: number) => void;
   restoreEntry: (entry: UserAnime) => void;
   patchEntry: (animeId: number, patch: Partial<UserAnime>) => void;
@@ -251,11 +251,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addToLibrary = useCallback(
-    (anime: Anime, status: WatchStatus = 'planned') => {
+    (anime: Anime, status: WatchStatus = 'planned', values: NewEntryValues = {}) => {
       cacheAnimes([anime]);
       setEntries((current) => {
         if (current.some((e) => e.animeId === anime.id)) return current;
-        return [...current, createEntry(anime, status)];
+        return [...current, createEntry(anime, status, values)];
       });
     },
     [cacheAnimes],
