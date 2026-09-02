@@ -1,8 +1,39 @@
 # Kagami — Anime Tracker
 
+**En ligne : https://kesanoyl.github.io/kagami/**
+
 Application web personnelle de suivi d'animes : découvrir, ajouter, suivre, reprendre,
 noter, organiser, analyser. Dark, cinématographique, pensée pour que chaque action
 importante tienne en 1 à 3 clics.
+
+## Déploiement
+
+Chaque push sur `main` déclenche `.github/workflows/deploy.yml` : build puis mise en
+ligne sur GitHub Pages.
+
+Le site est servi depuis le sous-chemin `/kagami/`, ce qui impose trois réglages :
+
+- `vite.config.ts` lit `base` dans `BASE_PATH` (posé par le workflow ; `/` en local) ;
+- le routeur prend `basename={import.meta.env.BASE_URL}` ;
+- `scripts/spa-fallback.mjs` copie `index.html` en `404.html` après le build.
+  GitHub Pages n'offre aucune règle de réécriture : sans ce fichier, un rechargement
+  sur `/library` renverrait une vraie page d'erreur. Les liens profonds répondent donc
+  avec un statut 404 tout en servant l'application, qui route ensuite normalement.
+
+Pour rejouer un build sous-chemin en local, `vite preview` a besoin de la **même**
+variable, sinon il sert `index.html` à la place des assets :
+
+```bash
+BASE_PATH=/kagami/ npm run build
+BASE_PATH=/kagami/ npx vite preview --port 4174
+BASE_URL=http://localhost:4174/kagami npm run test:ui
+```
+
+`npm run test:ui` accepte `BASE_URL`, ce qui permet de valider la production :
+
+```bash
+BASE_URL=https://kesanoyl.github.io/kagami npm run test:ui
+```
 
 ## Démarrer
 
