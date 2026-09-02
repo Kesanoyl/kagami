@@ -208,7 +208,57 @@ const seedAnimes = [
   },
 ];
 
+// A deliberately long romaji title with a native title and a banner: the exact
+// combination that made the Japanese watermark collide with the <h1>.
+seedAnimes.push({
+  id: 999001,
+  malId: null,
+  title: 'Re:Zero kara Hajimeru Isekai Seikatsu 4th Season',
+  titleEnglish: 'Re:ZERO -Starting Life in Another World- Season 4',
+  titleNative: 'Re:ゼロから始める異世界生活 4th season',
+  poster: null,
+  banner:
+    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="8" height="4"%3E%3Crect width="8" height="4" fill="%23888"/%3E%3C/svg%3E',
+  color: '#7f6ad6',
+  synopsis: 'Subaru revient au point de sauvegarde.',
+  genres: ['Drama', 'Fantasy'],
+  episodes: 25,
+  duration: 24,
+  year: 2026,
+  season: 'SPRING',
+  format: 'TV',
+  airingStatus: 'RELEASING',
+  averageScore: 90,
+  popularity: 300000,
+  studio: 'White Fox',
+  source: 'LIGHT_NOVEL',
+  startDate: '2026-04-05',
+  endDate: null,
+  nextEpisode: null,
+  siteUrl: null,
+  isAdult: false,
+  cachedAt: Date.now(),
+});
+
 const seedEntries = [
+  {
+    animeId: 999001,
+    status: 'watching',
+    currentEpisode: 3,
+    currentSeason: 4,
+    currentPart: null,
+    currentArc: null,
+    rating: null,
+    notes: '',
+    notesUpdatedAt: null,
+    favorite: false,
+    rewatches: 0,
+    addedAt: iso(5),
+    updatedAt: iso(30),
+    startedAt: iso(5),
+    completedAt: null,
+    history: [],
+  },
   {
     animeId: 21,
     status: 'watching',
@@ -390,7 +440,7 @@ const snapshotState = await evaluate(`
   })()
 `);
 
-if (snapshotState.count > 0 && snapshotState.entries === 2) {
+if (snapshotState.count > 0 && snapshotState.entries === seedEntries.length) {
   results.push(
     `OK   point de restauration automatique (${snapshotState.entries} series, ${snapshotState.reason})`,
   );
@@ -474,11 +524,11 @@ const afterRestore = await evaluate(`
   JSON.parse(localStorage.getItem('kagami:v1:entries') ?? '[]').length
 `);
 
-if (afterRestore === 2) {
-  results.push('OK   restauration : les 2 series sont revenues');
+if (afterRestore === seedEntries.length) {
+  results.push(`OK   restauration : les ${seedEntries.length} series sont revenues`);
 } else {
   failed = true;
-  results.push(`FAIL restauration : ${afterRestore} serie(s) au lieu de 2`);
+  results.push(`FAIL restauration : ${afterRestore} serie(s) au lieu de ${seedEntries.length}`);
 }
 
 // Re-seed for the remaining checks.
@@ -486,6 +536,62 @@ await evaluate(`
   localStorage.setItem('kagami:v1:animes', ${JSON.stringify(JSON.stringify(seedAnimes))});
   true;
 `);
+
+// Regression guard: the decorative Japanese watermark must never sit on top of
+// the title. It used to be anchored to the bottom of the banner, exactly where
+// a two-line romaji title lands.
+await goto('/anime/999001');
+await waitForText(['Seikatsu 4th Season']);
+const heroLayout = await evaluate(`
+  (() => {
+    const h1 = document.querySelector('h1');
+    if (!h1) return { error: 'h1 absent' };
+
+    const marks = [...document.querySelectorAll('p[aria-hidden="true"]')]
+      .filter((p) => getComputedStyle(p).fontFamily.includes('Noto Sans JP'));
+
+    const a = h1.getBoundingClientRect();
+    const overlaps = marks
+      .filter((m) => m.offsetParent !== null)
+      .map((m) => m.getBoundingClientRect())
+      .filter((b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom);
+
+    // Geometry alone missed the real defect: the banner's absolutely positioned
+    // gradients painted OVER the title. Hit-test every line of the h1 and the
+    // badge row, and check the topmost element is really them.
+    const lineHeight = parseFloat(getComputedStyle(h1).lineHeight);
+    const lines = Math.max(1, Math.round(a.height / lineHeight));
+    const covered = [];
+    for (let i = 0; i < lines; i++) {
+      const y = a.top + lineHeight * (i + 0.5);
+      const x = a.left + 12;
+      const top = document.elementFromPoint(x, y);
+      if (top !== h1 && !h1.contains(top)) {
+        covered.push({ line: i + 1, by: top ? top.tagName + '.' + String(top.className).slice(0, 45) : 'null' });
+      }
+    }
+
+    return {
+      lines,
+      titleVisible: a.width > 0 && a.height > 0 && a.top >= 0,
+      overlapCount: overlaps.length,
+      coveredLines: covered,
+    };
+  })()
+`);
+
+if (
+  heroLayout.overlapCount === 0 &&
+  heroLayout.titleVisible &&
+  heroLayout.coveredLines?.length === 0
+) {
+  results.push(
+    `OK   fiche : titre sur ${heroLayout.lines} lignes, aucune ligne masquee par le bandeau`,
+  );
+} else {
+  failed = true;
+  results.push(`FAIL bandeau de la fiche : ${JSON.stringify(heroLayout)}`);
+}
 
 // Regression guard: notes typed in the tracking panel must survive navigation.
 // They were silently written as an empty string before the autosave rewrite.

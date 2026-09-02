@@ -114,15 +114,21 @@ export default function AnimeDetailPage() {
             }}
             aria-hidden
           />
+          {/* Opaque enough at the bottom that a two-line title sits on canvas,
+              not on the artwork. */}
           <div
-            className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/85 to-canvas/25"
+            className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/90 to-canvas/25"
             aria-hidden
           />
 
-          {/* Native title as a large watermark — pure genre signal. */}
+          {/* Native title as a watermark.
+              It lives in the TOP band: the title block below is pulled up into
+              the banner, so anything anchored to the bottom collided with it as
+              soon as the romaji title wrapped onto two lines. Hidden on small
+              screens, where there is no spare width at all. */}
           {anime.titleNative && (
             <p
-              className="pointer-events-none absolute right-4 bottom-3 max-w-[55%] truncate text-right text-2xl font-bold text-ink/8 select-none sm:text-4xl lg:right-8 lg:text-5xl"
+              className="pointer-events-none absolute top-4 right-4 hidden max-w-[45%] truncate text-right text-3xl font-bold text-ink/[0.07] select-none sm:block lg:right-8 lg:text-4xl"
               style={{ fontFamily: 'var(--font-jp)' }}
               aria-hidden
             >
@@ -139,7 +145,13 @@ export default function AnimeDetailPage() {
           <ArrowLeft size={15} /> Retour
         </button>
 
-        <div className="mx-auto -mt-24 max-w-[112rem] px-4 sm:-mt-28 sm:px-6 lg:-mt-32 lg:px-8">
+        {/* `relative z-10` is load-bearing, not decoration.
+            This block is pulled up into the banner, and the banner's gradient
+            layers are absolutely positioned — so by CSS painting order they
+            covered this statically-positioned content even though it comes
+            later in the DOM. The first title line and the badges were being
+            painted over, which read as a title sliced at the banner edge. */}
+        <div className="relative z-10 mx-auto -mt-24 max-w-[112rem] px-4 sm:-mt-28 sm:px-6 lg:-mt-32 lg:px-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
             <Poster
               src={anime.poster}
@@ -158,14 +170,20 @@ export default function AnimeDetailPage() {
                     {AIRING_LABEL[anime.airingStatus] ?? anime.airingStatus}
                   </Badge>
                 )}
+                {/* Neutral, and labelled: gold + star is reserved for the
+                    user's own score, otherwise the two read as duplicates. */}
                 {score && (
-                  <Badge tone="warning">
-                    <Star size={10} fill="currentColor" strokeWidth={0} /> {score}
+                  <Badge tone="neutral" className="gap-1.5">
+                    <Star size={10} fill="currentColor" strokeWidth={0} className="text-ink-faint" />
+                    <span className="tnum text-ink">{score}</span>
+                    <span className="text-ink-faint">communauté</span>
                   </Badge>
                 )}
               </div>
 
-              <h1 className="text-3xl leading-[1.1] font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              {/* The shadow keeps long titles legible if they ride up over a
+                  bright banner before the gradient takes over. */}
+              <h1 className="text-3xl leading-[1.15] font-bold tracking-tight text-ink [text-shadow:0_2px_16px_rgba(0,0,0,0.75)] sm:text-4xl lg:text-5xl">
                 {title}
               </h1>
               {alt && <p className="mt-2 text-base text-ink-dim">{alt}</p>}
