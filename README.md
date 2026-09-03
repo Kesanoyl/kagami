@@ -125,8 +125,29 @@ rien perdre** :
    qui survit à un changement de navigateur, de machine ou d'URL. Chromium
    uniquement ; ailleurs l'interface le dit et renvoie vers l'export manuel.
 
+Et quatre garde-fous contre les scénarios qui détruisaient encore des données :
+
+5. **Écriture qui réduit la liste → point de restauration automatique**
+   (`localStorage.ts`, `saveEntries`). Quelle qu'en soit la cause — suppression
+   volontaire, import, lecture ratée revenue vide, bug d'une future version.
+   Les suppressions légitimes passent, elles deviennent simplement annulables.
+6. **Données illisibles mises en quarantaine** plutôt que remplacées. Sans ça,
+   l'app démarrait vide puis réécrivait ce vide par-dessus. Le texte brut est
+   conservé sous `kagami:v1:entries.corrupt`.
+7. **Fusion entre onglets** (`lib/merge.ts`). Deux onglets partagent le même
+   `localStorage` : le dernier à enregistrer écrasait le travail de l'autre,
+   sans la moindre erreur. Les changements sont désormais fusionnés entrée par
+   entrée, le `updatedAt` le plus récent l'emportant.
+8. **Récupération des données orphelines.** Si le préfixe de stockage changeait
+   un jour, une watchlist vide déclenche un balayage de toutes les clés
+   `kagami:*:entries` et adopte la plus fournie.
+
 Export / import manuels également disponibles, l'import affichant un aperçu
 (nouvelles / mises à jour / inchangées) avant toute écriture.
+
+`npm run test:durability` rejoue ces scénarios dans un vrai navigateur :
+corruption du stockage, changement de clé, deux onglets concurrents, et
+suppression via l'interface.
 
 ⚠️ `localStorage` est lié à une **origine**. En déployant l'app sur une autre URL,
 la watchlist de `localhost` ne suit pas : il faut importer le fichier de

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { applyEpisode, applyStatus, createEntry, pendingEpisodes } from '../src/lib/progress.ts';
 import { buildBackup, parseBackup, previewImport } from '../src/services/storage/backup.ts';
 import { coerceEntries, coerceSettings } from '../src/services/storage/coerce.ts';
+import { mergeEntries, sameEntries } from '../src/lib/merge.ts';
 
 const anime = {
   id: 1,
@@ -174,6 +175,39 @@ check('export → import conserve la progression', () => {
 check('un JSON invalide est rejeté proprement', () => {
   assert.throws(() => parseBackup('{"nope":1}'));
   assert.throws(() => parseBackup('pas du json'));
+});
+
+// --- Deux onglets ouverts ne doivent jamais s'écraser l'un l'autre ----------
+
+check('fusion : une série ajoutée dans l’autre onglet est conservée', () => {
+  const a = [{ ...createEntry(anime, 'watching'), animeId: 1, updatedAt: '2026-01-01T10:00:00Z' }];
+  const b = [
+    { ...createEntry(anime, 'watching'), animeId: 1, updatedAt: '2026-01-01T10:00:00Z' },
+    { ...createEntry(anime, 'planned'), animeId: 2, updatedAt: '2026-01-01T11:00:00Z' },
+  ];
+  const merged = mergeEntries(a, b);
+  assert.equal(merged.length, 2, 'aucune des deux listes n’est écrasée');
+  assert.ok(merged.find((e) => e.animeId === 2));
+});
+
+check('fusion : en cas de conflit, la version la plus récente gagne', () => {
+  const ancien = { ...createEntry(anime, 'watching'), animeId: 1, currentEpisode: 3, updatedAt: '2026-01-01T10:00:00Z' };
+  const recent = { ...createEntry(anime, 'watching'), animeId: 1, currentEpisode: 9, updatedAt: '2026-01-02T10:00:00Z' };
+  assert.equal(mergeEntries([ancien], [recent])[0].currentEpisode, 9);
+  assert.equal(mergeEntries([recent], [ancien])[0].currentEpisode, 9, 'l’ordre des arguments ne change rien');
+});
+
+check('fusion : une liste vide ne vide jamais l’autre', () => {
+  const mienne = [{ ...createEntry(anime, 'watching'), animeId: 1 }];
+  assert.equal(mergeEntries(mienne, []).length, 1);
+  assert.equal(mergeEntries([], mienne).length, 1);
+});
+
+check('sameEntries détecte un vrai changement', () => {
+  const base = [{ ...createEntry(anime, 'watching'), animeId: 1, updatedAt: 'A' }];
+  assert.equal(sameEntries(base, [{ ...base[0] }]), true);
+  assert.equal(sameEntries(base, [{ ...base[0], updatedAt: 'B' }]), false);
+  assert.equal(sameEntries(base, []), false);
 });
 
 // --- La promesse centrale : une nouvelle version du site ne perd rien --------

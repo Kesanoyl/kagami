@@ -60,11 +60,27 @@ export function listSnapshots(): Snapshot[] {
   return read().sort((a, b) => b.at.localeCompare(a.at));
 }
 
-/** Records a snapshot unconditionally. Used before anything destructive. */
+/**
+ * Records a snapshot. Used before anything destructive.
+ * Consecutive identical captures are collapsed so a single action (which can
+ * trigger both an explicit capture and the adapter's safety net) does not eat
+ * two of the six slots.
+ */
 export function captureSnapshot(entries: UserAnime[], reason: Snapshot['reason']): void {
   if (entries.length === 0) return;
-  const snapshots = read();
-  write([{ at: new Date().toISOString(), reason, entryCount: entries.length, entries }, ...snapshots]);
+
+  const snapshots = read().sort((a, b) => b.at.localeCompare(a.at));
+  const [latest] = snapshots;
+  const isDuplicate =
+    latest &&
+    latest.entryCount === entries.length &&
+    Date.now() - new Date(latest.at).getTime() < 5000;
+  if (isDuplicate) return;
+
+  write([
+    { at: new Date().toISOString(), reason, entryCount: entries.length, entries },
+    ...snapshots,
+  ]);
 }
 
 /** Records a snapshot only if the most recent one is old enough. */

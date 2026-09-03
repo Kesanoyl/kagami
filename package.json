@@ -11,7 +11,8 @@
     "test:logic": "node --import ./scripts/ts-resolve.mjs scripts/smoke-logic.mjs",
     "test:api": "node scripts/smoke-api.mjs",
     "test:ui": "node scripts/smoke-ui.mjs",
-    "test:bugs": "node scripts/bug-hunt.mjs"
+    "test:bugs": "node scripts/bug-hunt.mjs",
+    "test:durability": "node scripts/smoke-durability.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.39.0",

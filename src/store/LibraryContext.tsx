@@ -14,6 +14,8 @@ import { getAnimesByIds } from '@/services/api/anime';
 import { applyEpisode, applyStatus, createEntry, type NewEntryValues } from '@/lib/progress';
 import { buildNotifications } from '@/services/notifications';
 import { captureDailySnapshot, captureSnapshot } from '@/services/storage/snapshots';
+import { coerceEntries } from '@/services/storage/coerce';
+import { mergeEntries, sameEntries } from '@/lib/merge';
 import { requestPersistentStorage } from '@/services/storage/durability';
 import { buildBackup } from '@/services/storage/backup';
 import { getBackupTarget, writeBackupFile, type BackupTarget } from '@/services/storage/fileBackup';
@@ -107,6 +109,31 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // ------------------------------------------------------- cross-tab safety
+  /**
+   * Two tabs share one `localStorage`. Without this, the tab that saves last
+   * silently overwrites everything the other one did — days of work gone with
+   * no error anywhere. Incoming changes are merged entry by entry instead,
+   * newest `updatedAt` winning.
+   */
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== 'kagami:v1:entries' || !event.newValue) return;
+      try {
+        const incoming = coerceEntries(JSON.parse(event.newValue));
+        setEntries((current) => {
+          const merged = mergeEntries(current, incoming);
+          return sameEntries(current, merged) ? current : merged;
+        });
+      } catch {
+        // A tab that wrote garbage must not take this one down with it.
+      }
+    };
+
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   // -------------------------------------------------------------- persistence
